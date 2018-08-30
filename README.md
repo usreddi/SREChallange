@@ -17,7 +17,7 @@
 
 * Develop and apply automated tests to validate the correctness of the server configuration.
 
-#Roles
+# Roles
 
 There are 2 roles, 1 that will provision the EC2 instance - inorder for that to work you will need to set the vars within Defaults.
 
