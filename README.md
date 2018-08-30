@@ -25,4 +25,4 @@ The 2nd role is the actual configuration role of the EC2 instance and it will de
 
 To run the playbook make sure to be on the root folder and run :
 
-sudo ansible-playbook -i dev filename
+sudo ansible-playbook -i dev infra_main.yml
