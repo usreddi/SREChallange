@@ -1,0 +1,104 @@
+---
+
+- name: remove httpd if necessery (to prevent binding problems)
+  yum:
+    name: httpd
+    state: absent
+
+- name: NGINX | Installing NGINX repo rpm
+  yum:
+    name: http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm
+  become: true
+  become_user: root
+   
+- name: Installing relevant packages
+  yum: name={{ item }} state=installed
+  with_items:
+     - nginx
+     - python-firewall 
+     - firewalld
+  become: true
+  become_user: root
+
+- name: installing pip
+  easy_install: 
+    name: pip
+    state: latest
+
+- name: pip install openssl package
+  pip: 
+    name: pyOpenSSL   
+
+- name: upgrade all packages
+  yum:
+    name: '*'
+    state: latest
+  become: true
+  become_user: root
+
+- name: Delete old cert's (deleting certs directory)
+  file:
+    path: /etc/nginx/ssl
+    state: absent
+  ignore_errors: yes
+
+- name: Create SSL directory
+  file: 
+    path: /etc/nginx/ssl
+    state: directory
+    mode: 0644
+
+- openssl_privatekey:
+    path: /etc/nginx/ssl/server.key
+    force: True
+
+- name: Generate OpenSSL certificate file.
+  become: yes
+  command: openssl req -new -nodes -x509 -subj "/C=US/ST=Oregon/L=Portland/O=IT/CN=localhost" -days 365 -keyout /etc/nginx/ssl/server.key -out /etc/nginx/ssl/server.crt -extensions v3_ca creates=/etc/nginx/ssl/server.crt
+  notify:
+    - restart nginx
+
+- name: overwrite nginx.conf
+  template: 
+    src: templates/nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+
+- name: copy index.html
+  copy:
+    src: files/index.html
+    dest: /usr/share/nginx/html
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+
+- name : Enable and start nginx service 
+  service: name=nginx state=started enabled=True
+  become: true
+  become_user: root
+ 
+- name: Configure firewalld
+  firewalld:
+     service: "{{ item.service }}"
+     permanent: "{{ item.permanent }}"
+     state: enabled
+  with_items:
+    - { service: 'ssh', permanent: true }
+    - { service: 'http', permanent: true }
+    - { service: 'https', permanent: true }
+  become: true
+  become_user: root
+ 
+- name: check for port 80
+  wait_for:
+    host: "{{ SERVER_IP }}"
+    port: 80
+
+- name: check for port 443
+  wait_for:
+    host: "{{ SERVER_IP }}"
+    port: 80
